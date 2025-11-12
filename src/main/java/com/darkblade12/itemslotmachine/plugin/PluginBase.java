@@ -4,12 +4,6 @@ import com.darkblade12.itemslotmachine.plugin.command.CommandHandler;
 import com.darkblade12.itemslotmachine.plugin.command.CommandRegistrationException;
 import com.google.common.collect.ClassToInstanceMap;
 import com.google.common.collect.MutableClassToInstanceMap;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
-import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
@@ -17,25 +11,15 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
-
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public abstract class PluginBase extends JavaPlugin {
-    private static final Pattern VERSION_PATTERN = Pattern.compile("\\d+(\\.\\d+){2}");
     private static final Comparator<Manager<?>> MANAGER_COMPARATOR = Comparator.comparingInt(Manager::getLoadIndex);
     protected final int projectId;
     protected final int pluginId;
@@ -106,16 +90,8 @@ public abstract class PluginBase extends JavaPlugin {
             return;
         }
 
-        enableMetrics();
         long duration = System.currentTimeMillis() - startTime;
         logInfo("Plugin version %s enabled! (%d ms)", getVersion(), duration);
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                checkForUpdates();
-            }
-        }.runTaskAsynchronously(this);
     }
 
     @Override
@@ -214,75 +190,6 @@ public abstract class PluginBase extends JavaPlugin {
     @SuppressWarnings("unchecked")
     protected void registerCommandHandler(CommandHandler<?> commandHandler) {
         commandHandlers.putInstance((Class<CommandHandler<?>>) commandHandler.getClass(), commandHandler);
-    }
-
-    private void enableMetrics() {
-        try {
-            Metrics metrics = new Metrics(this, pluginId);
-            if (!metrics.isEnabled()) {
-                logInfo("Metrics is disabled.");
-            } else {
-                logInfo("This plugin is using Metrics by BtoBastian.");
-            }
-        } catch (Exception e) {
-            logException(e, "Failed to enable Metrics!");
-        }
-    }
-
-    private void checkForUpdates() {
-        JsonArray files;
-        try {
-            URL url = new URL("https://api.curseforge.com/servermods/files?projectIds=" + projectId);
-            URLConnection conn = url.openConnection();
-            conn.addRequestProperty("User-Agent", getName() + " Update Checker");
-            conn.setReadTimeout(5000);
-            conn.setDoOutput(true);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String response = reader.readLine();
-            reader.close();
-            JsonElement element = new JsonParser().parse(response);
-            files = element.getAsJsonArray();
-            if (files.size() == 0) {
-                logWarning("Failed to find any files for project id %d!", projectId);
-                return;
-            }
-        } catch (IOException | JsonSyntaxException e) {
-            logException(e, "Failed to retrieve update information!");
-            return;
-        }
-
-        JsonObject latestFile = (JsonObject) files.get(files.size() - 1);
-        String fileName = latestFile.get("name").getAsString();
-        Matcher matcher = VERSION_PATTERN.matcher(fileName);
-        if (!matcher.find()) {
-            logWarning("Failed to compare versions!");
-            return;
-        }
-
-        String latestVersion = matcher.group();
-        int[] currentNumbers = splitVersion(getVersion());
-        int[] latestNumbers = splitVersion(latestVersion);
-        if (currentNumbers == null || latestNumbers == null || currentNumbers.length != latestNumbers.length) {
-            logWarning("Failed to compare versions!");
-            return;
-        }
-
-        boolean updateAvailable = false;
-        for (int i = 0; i < currentNumbers.length; i++) {
-            if (latestNumbers[i] > currentNumbers[i]) {
-                updateAvailable = true;
-                break;
-            }
-        }
-
-        if (!updateAvailable) {
-            logInfo("There is no update available.");
-            return;
-        }
-
-        String fileUrl = latestFile.get("fileUrl").getAsString();
-        logInfo("Version %s is available for download at:", latestVersion);
-        logInfo(fileUrl);
     }
 
     protected String getPrefix() {

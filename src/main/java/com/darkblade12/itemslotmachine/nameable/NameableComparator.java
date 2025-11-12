@@ -12,10 +12,6 @@ public class NameableComparator<T extends Nameable> implements Comparator<T> {
         this.namePattern = namePattern;
     }
 
-    public NameableComparator() {
-        this(null);
-    }
-
     @Override
     public int compare(T e1, T e2) {
         String name1 = e1.getName();

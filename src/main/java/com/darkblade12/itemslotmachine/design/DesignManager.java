@@ -165,10 +165,6 @@ public final class DesignManager extends Manager<ItemSlotMachine> {
         return FileUtils.getFileNames(dataDirectory, stripExtension, Design.FILE_EXTENSION);
     }
 
-    public List<String> getFileNames() {
-        return getFileNames(false);
-    }
-
     public List<String> getNames() {
         return designs.stream().sorted(comparator).map(Design::getName).collect(Collectors.toList());
     }
